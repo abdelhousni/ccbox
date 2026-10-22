@@ -18,6 +18,7 @@
 | `.github/workflows/build-base.yml` | Reusable base image build (content-tagged, skipped when the tag exists) |
 | `.github/workflows/build-and-push.yml` | Reusable per-harness image build, tag and GitHub Release |
 | `.github/workflows/tests.yml` | shellcheck + golden test of the launchers on pull requests and pushes |
+| `.github/workflows/build-check.yml` | PR-only build-and-smoke check of `Dockerfile` for every harness (no push) |
 | `.github/workflows/build-pod.yml` | Builds and pushes the Kubernetes pod image `quay.io/guimou/codebox-pod` from `k8s/Containerfile` |
 | `k8s/` | Kubernetes/OpenShift deployment: pod image, SCC, kustomize base and example overlay, egress firewall generator (see [kubernetes.md](kubernetes.md)) |
 
@@ -141,6 +142,10 @@ Reusable workflow (also manually dispatchable with a `force` input). The base ta
 ### Build workflow (`build-and-push.yml`)
 
 Reusable workflow called once per harness by the release matrix, also manually dispatchable from the Actions UI with a `harness` input (`claude` / `opencode` / `qwencode` / `codex` / `omp`) and optional version/tag/base overrides. An optional `ref` input selects the commit to build and tag (the release workflow passes its version-bump commit). It resolves the harness to its image repository and version file, verifies the base tag exists (derived from the commit when not given), builds `Dockerfile` with `BASE_IMAGE`, `HARNESS` and `HARNESS_VERSION` build args, pushes, and, when called with a `git_tag`, creates the git tag and GitHub Release. Build caches are scoped per harness (`type=gha,scope={harness}`).
+
+### PR build check (`build-check.yml`)
+
+Runs on pull requests touching `Dockerfile`, a `firewall-domains*.txt` file, a version pin file, or the workflow itself. For each of the five harnesses it builds the image from the base tag of the base commit (same content-tag rule as `build-base.yml`), loads it locally (no push, no `latest` tag, no registry login, cache-from only — this check never writes anything), then runs it as the OpenShell sandbox uid (`1000790000:1000790000`, `HOME=/sandbox`, `OPENSHELL_SANDBOX=1`) to check the contract described in [architecture.md → OpenShell Runtime Contract](architecture.md#openshell-runtime-contract): every `/etc/codebox/sandbox-state-dirs` entry is mode 777 and writable, `/sandbox` itself is not, the `profile.d` env defaults are present, and the harness CLI is on `PATH` and reports a version. `fail-fast: false`, so one harness failing does not hide the others. If a PR also changes a base input, the referenced base tag may not exist yet in the registry (the base is only rebuilt on push to `main`), which fails this check the same way `build-and-push.yml`'s own base-existence check would.
 
 ### Image tags
 
