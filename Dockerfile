@@ -79,8 +79,18 @@ RUN set -eu; \
         fi && \
         install -m 0755 "$(readlink -f /tmp/claude-build/.local/bin/claude)" /usr/local/bin/claude && \
         rm -rf /tmp/claude-build && \
-        # Build guard: the installed binary must report the pinned version
-        HOME=/tmp/cv /usr/local/bin/claude --version | grep -F "${HARNESS_VERSION}" && \
+        # Build guard: when a version is pinned, the installed binary must
+        # report it. Capture --version into a variable first rather than
+        # piping to grep, so a failing claude --version is not masked by
+        # grep's exit status (this case arm runs without pipefail).
+        v=$(HOME=/tmp/cv /usr/local/bin/claude --version) && \
+        case "${HARNESS_VERSION}" in \
+            "") ;; \
+            *) case "$v" in \
+                   *"${HARNESS_VERSION}"*) ;; \
+                   *) echo "claude version mismatch: got '$v', expected '${HARNESS_VERSION}'" >&2; exit 1 ;; \
+               esac ;; \
+        esac && \
         rm -rf /tmp/cv && \
         printf '%s\n' '/sandbox/.claude' > /etc/codebox/sandbox-state-dirs ;; \
     opencode) \
@@ -159,8 +169,9 @@ RUN set -eu; \
 #     per-image env there, guarded by OPENSHELL_SANDBOX so it is a no-op on
 #     the workstation. The `:=` defaults mean spec.env or provider env
 #     always wins.
-RUN mkdir -p /sandbox && chmod 0755 /sandbox && \
-    while read -r d; do mkdir -p "$d" && chmod 0777 "$d"; done < /etc/codebox/sandbox-state-dirs && \
+RUN set -e; \
+    mkdir -p /sandbox && chmod 0755 /sandbox && \
+    while read -r d; do mkdir -p "$d" && chmod 0777 "$d" || exit 1; done < /etc/codebox/sandbox-state-dirs && \
     install -m 0644 /dev/stdin /etc/profile.d/zz-codebox-openshell.sh << 'EOF'
 if [ -n "${OPENSHELL_SANDBOX:-}" ]; then
   : "${DISABLE_AUTOUPDATER:=1}"; export DISABLE_AUTOUPDATER
