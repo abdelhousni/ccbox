@@ -1,0 +1,153 @@
+name: Build Check
+
+# PR-only build-and-smoke check for the harness Dockerfile. It never pushes,
+# never tags `latest`, never logs in to a registry, and never writes to the
+# GHA build cache (cache-from only) -- it exists purely to catch a broken
+# build or a broken OpenShell sandbox contract before merge, on a PR that
+# touches Dockerfile-level inputs.
+#
+# Each matrix job builds one harness image from the published
+# codebox-base tag (same derivation as build-and-push.yml / build-base.yml:
+# the short SHA of the last commit touching Dockerfile.base, os-packages.txt
+# or init-firewall.sh) and then runs it as the OpenShell sandbox uid
+# (1000790000:1000790000, HOME=/sandbox, OPENSHELL_SANDBOX=1 -- see
+# docs/architecture.md, "OpenShell Runtime Contract") to check:
+#   - every dir in /etc/codebox/sandbox-state-dirs is mode 777 and writable
+#   - /sandbox itself is NOT writable by the sandbox uid
+#   - the profile.d env defaults are present
+#   - the harness CLI is on PATH and reports a version
+#
+# If a PR also changes a base input, the published base tag this computes
+# may not exist yet (the base is only built on push to main); that failure
+# mode is the same one build-and-push.yml's "Verify the base image exists"
+# step guards against, and is acceptable here since this check never runs
+# on a push.
+
+on:
+  pull_request:
+    paths:
+      - 'Dockerfile'
+      - 'firewall-domains*.txt'
+      - '*_VERSION'
+      - '.github/workflows/build-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - harness: claude
+            version_file: CLAUDE_VERSION
+            cli: claude
+          - harness: opencode
+            version_file: OPENCODE_VERSION
+            cli: opencode
+          - harness: qwencode
+            version_file: QWENCODE_VERSION
+            cli: qwen
+          - harness: codex
+            version_file: CODEX_VERSION
+            cli: codex
+          - harness: omp
+            version_file: OMP_VERSION
+            cli: omp
+
+    env:
+      REGISTRY: quay.io
+      BASE_IMAGE_NAME: guimou/codebox-base
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Resolve build parameters
+        id: params
+        env:
+          VERSION_FILE: ${{ matrix.version_file }}
+        run: |
+          VERSION=$(tr -d '[:space:]' < "$VERSION_FILE")
+          # Same rule as build-base.yml / build-and-push.yml: the base is
+          # content-tagged by the last commit touching its inputs.
+          BASE_TAG=$(git log -1 --format=%H -- Dockerfile.base os-packages.txt init-firewall.sh | cut -c1-12)
+          if [ -z "$BASE_TAG" ]; then
+            echo "Could not determine base image tag" >&2
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "base_image=${REGISTRY}/${BASE_IMAGE_NAME}:${BASE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "Base: ${REGISTRY}/${BASE_IMAGE_NAME}:${BASE_TAG}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build image (no push)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          load: true
+          tags: build-check/${{ matrix.harness }}:test
+          build-args: |
+            BASE_IMAGE=${{ steps.params.outputs.base_image }}
+            HARNESS=${{ matrix.harness }}
+            HARNESS_VERSION=${{ steps.params.outputs.version }}
+          cache-from: type=gha,scope=${{ matrix.harness }}
+
+      - name: Smoke test as the OpenShell sandbox uid
+        env:
+          IMAGE: build-check/${{ matrix.harness }}:test
+          CLI: ${{ matrix.cli }}
+        run: |
+          set -e
+          docker run --rm --user 1000790000:1000790000 \
+            -e HOME=/sandbox -e OPENSHELL_SANDBOX=1 -e CLI="$CLI" \
+            "$IMAGE" bash -lc '
+              set -e
+              echo "--- id ---"
+              id
+              echo "--- manifest ---"
+              cat /etc/codebox/sandbox-state-dirs
+
+              echo "--- state dirs: mode 777 and writable ---"
+              while read -r d; do
+                mode=$(stat -c %a "$d")
+                if [ "$mode" != "777" ]; then
+                  echo "::error::$d is mode $mode, expected 777" >&2
+                  exit 1
+                fi
+                if ! touch "$d/.build-check"; then
+                  echo "::error::cannot write to $d" >&2
+                  exit 1
+                fi
+                echo "ok   $d (777, writable)"
+              done < /etc/codebox/sandbox-state-dirs
+
+              echo "--- /sandbox itself must stay unwritable to the sandbox uid ---"
+              if touch /sandbox/.build-check 2>/dev/null; then
+                echo "::error::touch /sandbox/.build-check unexpectedly succeeded" >&2
+                exit 1
+              fi
+              echo "ok   /sandbox (not writable)"
+
+              echo "--- profile.d env ---"
+              for v in CLAUDE_CONFIG_DIR PI_CONFIG_FILES PI_NATIVES_DIR DISABLE_AUTOUPDATER OPENCODE_DISABLE_AUTOUPDATE; do
+                eval "val=\${$v:-}"
+                if [ -z "$val" ]; then
+                  echo "::error::$v is not set" >&2
+                  exit 1
+                fi
+                echo "$v=$val"
+              done
+
+              echo "--- cli ---"
+              command -v "$CLI"
+              "$CLI" --version
+            '
