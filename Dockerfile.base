@@ -78,7 +78,7 @@ RUN printf '%s\n' \
 # Polls every 3 seconds, kills non-lead panes where the harness has exited
 # (pane is running just bash) and the pane is older than 10 seconds
 # (avoids race with pane startup before the harness launches).
-RUN cat > /home/coder/.ccbox-tmux-monitor.sh << 'MONITOR'
+RUN cat > /home/coder/.ccbox-tmux-monitor.sh <<'MONITOR'
 #!/bin/bash
 while tmux has-session -t coder 2>/dev/null; do
     sleep 3
@@ -106,7 +106,7 @@ ENV PLAYWRIGHT_MCP_EXECUTABLE_PATH="/usr/lib64/chromium-browser/chromium-browser
 
 # Playwright MCP config file for reliable system browser usage
 # (works around known --executable-path CLI bugs in some @playwright/mcp versions)
-RUN cat > /home/coder/.playwright-mcp-config.json << 'PWCONFIG'
+RUN cat > /home/coder/.playwright-mcp-config.json <<'PWCONFIG'
 {
   "browser": {
     "browserName": "chromium",

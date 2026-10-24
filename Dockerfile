@@ -172,7 +172,7 @@ RUN set -eu; \
 RUN set -e; \
     mkdir -p /sandbox && chmod 0755 /sandbox && \
     while read -r d; do mkdir -p "$d" && chmod 0777 "$d" || exit 1; done < /etc/codebox/sandbox-state-dirs && \
-    install -m 0644 /dev/stdin /etc/profile.d/zz-codebox-openshell.sh << 'EOF'
+    install -m 0644 /dev/stdin /etc/profile.d/zz-codebox-openshell.sh <<'EOF'
 if [ -n "${OPENSHELL_SANDBOX:-}" ]; then
   : "${DISABLE_AUTOUPDATER:=1}"; export DISABLE_AUTOUPDATER
   : "${OPENCODE_DISABLE_AUTOUPDATE:=1}"; export OPENCODE_DISABLE_AUTOUPDATE
