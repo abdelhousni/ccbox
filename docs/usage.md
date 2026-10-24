@@ -250,9 +250,20 @@ ccbox --github-token "ghp_xxx"     # Use specific token instead of auto-detectin
 2. `GITLAB_TOKEN` in the host environment (`env`)
 3. the host's `glab`, from `glab config get token --host <host>` after `glab auth login` (`auto-detected`)
 
-**Host** (first match wins): `--gitlab-host`, then `GITLAB_HOST`, then glab's default host (`glab config get host`), then `gitlab.com`. A URL such as `https://gitlab.example.com/` is reduced to the bare host.
+**Host**: `--gitlab-host`, then `GITLAB_HOST`. With neither:
 
-When a token is found, the container gets `GITLAB_TOKEN` and `GITLAB_HOST`, which `glab` reads directly. Git HTTPS is wired to `glab auth git-credential` for that host only, through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0` env vars, so no file is written and a read-only `--with-gitconfig` mount is not touched. No `~/.config/glab-cli` is mounted. One GitLab host per launch.
+- a token from the host `glab` uses glab's default host (`glab config get host`, `gitlab.com` unless configured), since glab stores each token with its host
+- a token from `--gitlab-token` or `GITLAB_TOKEN` is **not injected** and the launcher warns: nothing says which instance it belongs to, and guessing `gitlab.com` would send a self-hosted token to a third party
+
+A URL such as `https://gitlab.example.com/` is reduced to the bare host.
+
+For a self-hosted instance, set the host once in your shell profile so you don't have to pass `--gitlab-host` each time:
+
+```bash
+export GITLAB_HOST=gitlab.example.com   # e.g. in ~/.zshrc
+```
+
+When a token is found, the container gets `GITLAB_TOKEN` and `GITLAB_HOST`, which `glab` reads directly. Git HTTPS is wired to `glab auth git-credential` for that host only, through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0` env vars, so a read-only `--with-gitconfig` mount is not touched. The host's glab config is not mounted. Instead the launcher seeds a token-less glab config for that host (`~/.codebox/glab/<host>/config.yml`, mode 600, created only if missing) and mounts that directory read-write as `~/.config/glab-cli`. glab needs the host listed there to report `GITLAB_TOKEN` as valid in `glab auth status` and to clone over HTTPS. glab's own state (such as `last_seen_version`) and any `glab config set` made in a session persist there, per host and shared across projects. If you run `glab auth login` inside the container, that token is saved there on the host too; use `GITLAB_TOKEN` instead to keep tokens out of it. Delete the directory to reset it. One GitLab host per launch.
 
 ```bash
 ccbox                                              # Auto-detect (default; nothing happens without a token)
@@ -266,7 +277,6 @@ ccbox --with-gitlab                                # Explicitly request token (w
 
 - The agent can do anything the token allows. Prefer project or group access tokens with the minimum scopes (`read_repository`/`write_repository`, plus `api` only if it should open merge requests) over personal access tokens
 - `--no-gitlab` is the kill switch
-- `glab auth status` reports the host as not authenticated, because it only checks glab's own config file; API calls and git operations still use `GITLAB_TOKEN`
 - The image sets `GLAB_CHECK_UPDATE=false` and `GLAB_SEND_TELEMETRY=false`
 - With `--with-firewall`, GitLab hosts are not in the baked allowlist and are blocked
 - A self-hosted instance behind a private CA needs that CA in the image's trust store (not handled by the launcher yet)

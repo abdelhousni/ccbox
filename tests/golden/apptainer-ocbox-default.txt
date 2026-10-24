@@ -1,5 +1,6 @@
 --bind /etc/localtime:/etc/localtime:ro
 --bind ROOT/home/.cache/opencode:/home/coder/.cache/opencode
+--bind ROOT/home/.codebox/glab/gitlab.com:/home/coder/.config/glab-cli
 --bind ROOT/home/.config/opencode:/home/coder/.config/opencode
 --bind ROOT/home/.local/share/ocbox-projects/demo_HASH/data:/home/coder/.local/share/opencode
 --bind ROOT/home/.local/share/opencode/auth.json:/home/coder/.local/share/opencode/auth.json

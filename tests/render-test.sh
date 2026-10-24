@@ -115,6 +115,10 @@ SCENARIOS=(
     "ccbox-explicit|ccbox|--github-token ghp_explicit --npm-global ROOT/npm-global --local"
     "ccbox-gitlab-explicit|ccbox|--gitlab-token glpat-explicit --gitlab-host gitlab.example.test"
     "ccbox-no-gitlab|ccbox|--no-gitlab"
+    # GITLAB_TOKEN from env: injected with GITLAB_HOST; without a host it is
+    # not (never guess gitlab.com for a token of unknown origin)
+    "ccbox-gitlab-env|ccbox|"
+    "ccbox-gitlab-env-nohost|ccbox|"
     "ccbox-mount|ccbox|--mount ROOT/repos/demo-worktrees:/worktrees --mount=ROOT/npm-global:/extra:ro"
     "!ccbox-mount-missing|ccbox|--mount ROOT/repos/nope:/worktrees"
     "!ccbox-mount-relative|ccbox|--mount ROOT/repos/demo-worktrees:worktrees"
@@ -207,9 +211,14 @@ for entry in "${SCENARIOS[@]}"; do
     IFS='|' read -r name box args <<< "$entry"
     args="${args//ROOT/$ROOT}"
     EXTRA_ENV=(NOOP=1)
-    if [[ "$name" == apptainer-env-var ]]; then
-        EXTRA_ENV=(CODEBOX_RUNTIME=apptainer "CODEBOX_SCRATCH_DIR=${ROOT}/scratch")
-    fi
+    case "$name" in
+        apptainer-env-var)
+            EXTRA_ENV=(CODEBOX_RUNTIME=apptainer "CODEBOX_SCRATCH_DIR=${ROOT}/scratch") ;;
+        ccbox-gitlab-env)
+            EXTRA_ENV=(GITLAB_TOKEN=glpat-env GITLAB_HOST=https://gitlab.env.test) ;;  # notsecret
+        ccbox-gitlab-env-nohost)
+            EXTRA_ENV=(GITLAB_TOKEN=glpat-env) ;;  # notsecret
+    esac
     if [[ "$name" == !* ]]; then
         # Expected to be refused before anything is launched
         name="${name#!}"

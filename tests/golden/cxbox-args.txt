@@ -19,6 +19,7 @@
 -e TZ=UTC
 -it
 -v /etc/localtime:/etc/localtime:ro
+-v ROOT/home/.codebox/glab/gitlab.com:/home/coder/.config/glab-cli:z
 -v ROOT/home/.codex/cxbox-projects/demo_HASH/data:/home/coder/.codex:z
 -v ROOT/npm-global:/home/coder/.npm-global:ro,z
 -v ROOT/repos/demo:/workspace:z
