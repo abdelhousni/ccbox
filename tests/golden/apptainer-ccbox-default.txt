@@ -30,6 +30,7 @@
 --bind ROOT/home/.claude/status-line.sh:/home/coder/.claude/status-line.sh:ro
 --bind ROOT/home/.claude/themes:/home/coder/.claude/themes
 --bind ROOT/home/.claude/workflows:/home/coder/.claude/workflows
+--bind ROOT/home/.codebox/glab/gitlab.com:/home/coder/.config/glab-cli
 --bind ROOT/repos/demo:/workspace
 --cleanenv
 --env ANTHROPIC_API_KEY=anthropic-stub

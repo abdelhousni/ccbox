@@ -1,4 +1,5 @@
 --bind /etc/localtime:/etc/localtime:ro
+--bind ROOT/home/.codebox/glab/gitlab.com:/home/coder/.config/glab-cli
 --bind ROOT/home/.codex/cxbox-projects/demo_HASH/data:/home/coder/.codex
 --bind ROOT/repos/demo:/workspace
 --cleanenv

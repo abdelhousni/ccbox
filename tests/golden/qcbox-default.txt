@@ -18,6 +18,7 @@
 -e TZ=UTC
 -it
 -v /etc/localtime:/etc/localtime:ro
+-v ROOT/home/.codebox/glab/gitlab.com:/home/coder/.config/glab-cli:z
 -v ROOT/home/.qwen/.env:/home/coder/.qwen/.env:ro,z
 -v ROOT/home/.qwen/QWEN.md:/home/coder/.qwen/QWEN.md:z
 -v ROOT/home/.qwen/qcbox-projects/demo_HASH/file-history:/home/coder/.qwen/file-history:z

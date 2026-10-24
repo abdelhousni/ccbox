@@ -72,7 +72,7 @@ The launchers solve this **host-side**: each project gets its own host directory
 
 ## Per-Harness Mounts
 
-Common to all launchers (handled by the engine): workspace, clipboard/display, PulseAudio, timezone, npm-global (ro), GitHub token env (`GH_TOKEN`, `GITHUB_TOKEN`), GitLab token env (`GITLAB_TOKEN`, `GITLAB_HOST`, plus `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0` pointing git at `glab auth git-credential` for that host). Opt-in host mounts: `--with-gcloud` (gcloud, ro), `--with-gitconfig` (gitconfig, ro), `--mount HOST:CONTAINER[:ro]` (any host directory, repeatable), `--with-credentials` (the harness credential file, rw: `.credentials.json` for ccbox, `auth.json` for ocbox, `oauth_creds.json` for qcbox, `auth.json` for cxbox; ro for ompbox: `.env` and `agent/.env`).
+Common to all launchers (handled by the engine): workspace, clipboard/display, PulseAudio, timezone, npm-global (ro), GitHub token env (`GH_TOKEN`, `GITHUB_TOKEN`), GitLab token env (`GITLAB_TOKEN`, `GITLAB_HOST`, plus `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0` pointing git at `glab auth git-credential` for that host), plus a launcher-seeded, token-less glab config directory per host (`~/.codebox/glab/<host>/` → `~/.config/glab-cli`, rw, shared across projects). Opt-in host mounts: `--with-gcloud` (gcloud, ro), `--with-gitconfig` (gitconfig, ro), `--mount HOST:CONTAINER[:ro]` (any host directory, repeatable), `--with-credentials` (the harness credential file, rw: `.credentials.json` for ccbox, `auth.json` for ocbox, `oauth_creds.json` for qcbox, `auth.json` for cxbox; ro for ompbox: `.env` and `agent/.env`).
 
 ### What credentials can reach the container
 

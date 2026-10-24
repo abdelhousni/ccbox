@@ -53,6 +53,7 @@
 -v ROOT/home/.claude/status-line.sh:/home/coder/.claude/status-line.sh:ro,z
 -v ROOT/home/.claude/themes:/home/coder/.claude/themes:z
 -v ROOT/home/.claude/workflows:/home/coder/.claude/workflows:z
+-v ROOT/home/.codebox/glab/gitlab.com:/home/coder/.config/glab-cli:z
 -v ROOT/home/.config/gcloud:/home/coder/.config/gcloud:ro,z
 -v ROOT/home/.gitconfig:/home/coder/.gitconfig:ro,z
 -v ROOT/npm-global:/home/coder/.npm-global:ro,z

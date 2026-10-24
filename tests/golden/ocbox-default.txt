@@ -20,6 +20,7 @@
 -it
 -v /etc/localtime:/etc/localtime:ro
 -v ROOT/home/.cache/opencode:/home/coder/.cache/opencode:z
+-v ROOT/home/.codebox/glab/gitlab.com:/home/coder/.config/glab-cli:z
 -v ROOT/home/.config/opencode:/home/coder/.config/opencode:z
 -v ROOT/home/.local/share/ocbox-projects/demo_HASH/data:/home/coder/.local/share/opencode:z
 -v ROOT/npm-global:/home/coder/.npm-global:ro,z

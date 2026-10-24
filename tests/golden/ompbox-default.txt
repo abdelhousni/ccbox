@@ -19,6 +19,7 @@
 -e TZ=UTC
 -it
 -v /etc/localtime:/etc/localtime:ro
+-v ROOT/home/.codebox/glab/gitlab.com:/home/coder/.config/glab-cli:z
 -v ROOT/home/.omp/agent/AGENTS.md:/home/coder/.omp/agent/AGENTS.md:ro,z
 -v ROOT/home/.omp/agent/commands:/home/coder/.omp/agent/commands:z
 -v ROOT/home/.omp/agent/extensions:/home/coder/.omp/agent/extensions:z

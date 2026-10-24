@@ -355,7 +355,7 @@ Follow the prompts to authenticate via browser or token. This creates an OAuth t
 
 ## GitLab Authentication
 
-`glab` is pre-installed. A GitLab token is injected as `GITLAB_TOKEN` (with `GITLAB_HOST`) from `--gitlab-token`, else the host `GITLAB_TOKEN`, else the host `glab` (`glab config get token --host <host>`). Host: `--gitlab-host`, else `GITLAB_HOST`, else glab's default host, else `gitlab.com` (self-hosted works). Git HTTPS uses `glab auth git-credential` for that host via `GIT_CONFIG_*` env vars (no file written). `--no-gitlab` disables it, `--with-gitlab` warns when no token is found. Logic lives in `add_gitlab_token()` in `lib/box-common.sh`. Details in `docs/usage.md` (GitLab Authentication).
+`glab` is pre-installed. A GitLab token is injected as `GITLAB_TOKEN` (with `GITLAB_HOST`) from `--gitlab-token`, else the host `GITLAB_TOKEN`, else the host `glab` (`glab config get token --host <host>`). Host: `--gitlab-host`, else `GITLAB_HOST`; with neither, a glab-detected token uses glab's default host, while a `--gitlab-token`/`GITLAB_TOKEN` token is not injected (warning), so a self-hosted token is never sent to gitlab.com. Git HTTPS uses `glab auth git-credential` for that host via `GIT_CONFIG_*` env vars. A token-less glab config for the host is seeded in `~/.codebox/glab/<host>/` (config.yml mode 600, only if missing) and that directory is mounted read-write as `~/.config/glab-cli` (glab saves state via temp file + rename), so `glab auth status` accepts the env token and `glab repo clone` uses HTTPS. `--no-gitlab` disables it, `--with-gitlab` warns when no token is found. Logic lives in `add_gitlab_token()` in `lib/box-common.sh`. Details in `docs/usage.md` (GitLab Authentication).
 
 ## Agent Teams
 
