@@ -15,7 +15,7 @@ One repository produces five container images and five launchers from a shared b
 - **Mount only the current folder** — the project directory is the only host code visible inside the container, at `/workspace`.
 - **Per-project isolation** — each project gets its own history and session data; sessions of different projects never mix.
 - **Share only what is truly shareable** — global settings and caches are shared across projects; credentials are opt-in (`--with-credentials`); everything stateful is per-project.
-- **Host integration where it helps** — clipboard/display, audio, timezone, gcloud credentials (read-only, opt-in via `--with-gcloud`), host gitconfig (read-only, opt-in via `--with-gitconfig`), extra host directories (opt-in via `--mount`), harness credentials (read-write, opt-in via `--with-credentials`), GitHub token, and host-installed global npm packages (read-only) are connected from the host.
+- **Host integration where it helps** — clipboard/display, audio, timezone, gcloud credentials (read-only, opt-in via `--with-gcloud`), host gitconfig (read-only, opt-in via `--with-gitconfig`), extra host directories (opt-in via `--mount`), harness credentials (read-write, opt-in via `--with-credentials`), GitHub and GitLab tokens, and host-installed global npm packages (read-only) are connected from the host.
 - **Rootless and SELinux-friendly** — Podman rootless with `--userns=keep-id`, `:z` volume labels on Linux.
 
 ## One Base, Five Images
@@ -48,7 +48,7 @@ Auto-updaters are disabled for all harnesses — versions are controlled by the 
 The launchers are thin wrappers around a shared engine, `lib/box-common.sh`:
 
 - Each wrapper defines **identity variables** (box name, harness, CLI binary, registry image, version flag/file, environment passthrough patterns).
-- The engine provides everything common: argument parsing, image pull/build/tag resolution, project keying, container naming, base mounts (workspace, timezone, audio), opt-in host mounts (`--with-gcloud`, `--with-gitconfig`, `--mount`), clipboard wiring, npm-global mount, GitHub token injection, firewall capabilities, and the final `podman run`.
+- The engine provides everything common: argument parsing, image pull/build/tag resolution, project keying, container naming, base mounts (workspace, timezone, audio), opt-in host mounts (`--with-gcloud`, `--with-gitconfig`, `--mount`), clipboard wiring, npm-global mount, GitHub and GitLab token injection, firewall capabilities, and the final `podman run`.
 - Wrappers customize behavior through **hook functions** the engine calls at defined points: `harness_parse_arg` (harness-specific flags), `harness_ensure_config` (create global config on first run), `harness_setup_project` (create per-project host directories), `harness_mounts` (harness-specific volume mounts), `harness_pre_run` (wrap the launch command, e.g. tmux), and `harness_log_status`.
 - Mounts and environment variables are declared in a **runtime-neutral form**: wrappers and the engine call `add_mount HOST CONTAINER [ro[,nolabel]]`, `add_optional_mount` and `add_env NAME VALUE`, which append to an ordered session spec. A **runtime backend** turns that spec, the image tag and the launch command into the actual command line. Two backends exist. The Podman backend adds the rootless flags (`--userns=keep-id`, `:z` labels unless `nolabel`, firewall capabilities) and runs `podman run`. The Apptainer backend (for a long-lived pod on Kubernetes, see [kubernetes.md](kubernetes.md)) converts the same registry image to a SIF on first use, runs `apptainer exec` with `--no-home --no-mount tmp,cwd --pid --ipc --cleanenv --writable-tmpfs` so that nothing from the pod is visible except the explicit binds, and passes the environment as `APPTAINERENV_*` exports. Both backends render the same session spec, so the wrappers and the isolation model are identical on a workstation and in a pod.
 
@@ -72,7 +72,7 @@ The launchers solve this **host-side**: each project gets its own host directory
 
 ## Per-Harness Mounts
 
-Common to all launchers (handled by the engine): workspace, clipboard/display, PulseAudio, timezone, npm-global (ro), GitHub token env. Opt-in host mounts: `--with-gcloud` (gcloud, ro), `--with-gitconfig` (gitconfig, ro), `--mount HOST:CONTAINER[:ro]` (any host directory, repeatable), `--with-credentials` (the harness credential file, rw: `.credentials.json` for ccbox, `auth.json` for ocbox, `oauth_creds.json` for qcbox, `auth.json` for cxbox; ro for ompbox: `.env` and `agent/.env`).
+Common to all launchers (handled by the engine): workspace, clipboard/display, PulseAudio, timezone, npm-global (ro), GitHub token env (`GH_TOKEN`, `GITHUB_TOKEN`), GitLab token env (`GITLAB_TOKEN`, `GITLAB_HOST`, plus `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0` pointing git at `glab auth git-credential` for that host). Opt-in host mounts: `--with-gcloud` (gcloud, ro), `--with-gitconfig` (gitconfig, ro), `--mount HOST:CONTAINER[:ro]` (any host directory, repeatable), `--with-credentials` (the harness credential file, rw: `.credentials.json` for ccbox, `auth.json` for ocbox, `oauth_creds.json` for qcbox, `auth.json` for cxbox; ro for ompbox: `.env` and `agent/.env`).
 
 ### What credentials can reach the container
 

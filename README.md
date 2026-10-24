@@ -104,7 +104,7 @@ API keys and provider settings are forwarded from host environment variables (e.
 - `--with-gitconfig` to mount `~/.gitconfig`,
 - `--with-credentials` to mount the harness credential store file — `~/.claude/.credentials.json` (ccbox), `~/.local/share/opencode/auth.json` (ocbox), `~/.qwen/oauth_creds.json` (qcbox), `~/.codex/auth.json` (cxbox), `~/.omp/.env` and `~/.omp/agent/.env` (ompbox, read-only dotenv API keys).
 
-Note this does **not** cover the always-mounted main config (`~/.claude/settings.json`, `~/.config/opencode/opencode.json`, `~/.qwen/settings.json`, `~/.codex/config.toml`, `~/.omp/agent/config.yml`): any key stored in those is passed regardless of `--with-credentials`. GitHub token injection (`GH_TOKEN`) is unaffected. OAuth logins done with `/login` inside an ompbox container stay per project (see [docs/usage.md](docs/usage.md#credentials)).
+Note this does **not** cover the always-mounted main config (`~/.claude/settings.json`, `~/.config/opencode/opencode.json`, `~/.qwen/settings.json`, `~/.codex/config.toml`, `~/.omp/agent/config.yml`): any key stored in those is passed regardless of `--with-credentials`. GitHub and GitLab token injection (`GH_TOKEN`, `GITLAB_TOKEN`) are unaffected. OAuth logins done with `/login` inside an ompbox container stay per project (see [docs/usage.md](docs/usage.md#credentials)).
 
 ## Kubernetes / OpenShift
 
@@ -114,7 +114,7 @@ The same launchers run inside a long-lived pod, with the pod playing the role of
 
 | Document | Contents |
 |----------|----------|
-| [docs/usage.md](docs/usage.md) | All flags, provider configuration, GitHub auth, version pinning, firewall, clipboard, agent teams, platform notes, included tools |
+| [docs/usage.md](docs/usage.md) | All flags, provider configuration, GitHub/GitLab auth, version pinning, firewall, clipboard, agent teams, platform notes, included tools |
 | [docs/architecture.md](docs/architecture.md) | How images, launchers, mounts, and per-project isolation work; what data lives where for each harness |
 | [docs/development.md](docs/development.md) | Building locally, adding packages/domains, CI/CD and release process |
 | [docs/kubernetes.md](docs/kubernetes.md) | Running the launchers in a long-lived pod on Kubernetes/OpenShift (Apptainer runtime, RWX volume, SCC, egress policy) |
