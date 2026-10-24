@@ -23,6 +23,7 @@ glibc-langpack-en
 # Version control
 git
 gh
+glab
 
 # Node.js (Fedora 44+ uses versioned nodejs packages)
 nodejs24

@@ -308,6 +308,10 @@ show_help() {
     echo "  --with-github            Explicitly enable GitHub token injection (auto by default)"
     echo "  --no-github              Disable GitHub token injection"
     echo "  --github-token TOKEN     Use specific GitHub token instead of auto-detecting"
+    echo "  --with-gitlab            Explicitly enable GitLab token injection (auto by default)"
+    echo "  --no-gitlab              Disable GitLab token injection"
+    echo "  --gitlab-token TOKEN     Use specific GitLab token instead of GITLAB_TOKEN / glab"
+    echo "  --gitlab-host HOST       GitLab host (default: GITLAB_HOST, glab's default host, gitlab.com)"
     echo "  --with-gcloud            Mount ~/.config/gcloud read-only (for Vertex AI)"
     echo "  --with-gitconfig         Mount ~/.gitconfig read-only (git identity and config)"
     echo "  --mount HOST:CONTAINER[:ro]  Bind-mount an extra host directory (repeatable)"
@@ -327,6 +331,7 @@ show_help() {
     echo "  ${BOX_NAME} --build-base                 # Rebuild the base image too (Apple Silicon, base changes)"
     echo "  ${BOX_NAME} --with-firewall              # Run with network restrictions"
     echo "  ${BOX_NAME} --no-github                  # Run without GitHub token"
+    echo "  ${BOX_NAME} --gitlab-host gitlab.example.com  # Use a self-hosted GitLab"
     echo "  ${BOX_NAME} -- --version                 # Pass args to ${HARNESS_CLI}"
     echo "  ${BOX_NAME} --shell                      # Open a shell in the container instead of ${HARNESS_CLI}"
 }
@@ -838,6 +843,55 @@ add_github_token() {
     fi
 }
 
+# GitLab token injection for glab and git over HTTPS. Sets GL_TOKEN_VALUE,
+# GL_TOKEN_SOURCE and GL_HOST for the launch summary.
+add_gitlab_token() {
+    GL_TOKEN_VALUE=""
+    GL_TOKEN_SOURCE=""
+    GL_HOST=""
+
+    $NO_GITLAB && return 0
+
+    local have_glab=false
+    command -v glab &>/dev/null && have_glab=true
+
+    # Host: --gitlab-host, then GITLAB_HOST, then glab's default host
+    GL_HOST="${GITLAB_HOST_ARG:-${GITLAB_HOST:-}}"
+    if [[ -z "$GL_HOST" ]] && $have_glab; then
+        GL_HOST=$(glab config get host 2>/dev/null || true)
+    fi
+    GL_HOST="${GL_HOST:-gitlab.com}"
+    # glab accepts a URL for the host; git credential config needs the bare host
+    GL_HOST="${GL_HOST#*://}"
+    GL_HOST="${GL_HOST%%/*}"
+
+    if [[ -n "$GITLAB_TOKEN_ARG" ]]; then
+        GL_TOKEN_VALUE="$GITLAB_TOKEN_ARG"
+        GL_TOKEN_SOURCE="provided"
+    elif [[ -n "${GITLAB_TOKEN:-}" ]]; then
+        GL_TOKEN_VALUE="$GITLAB_TOKEN"
+        GL_TOKEN_SOURCE="env"
+    elif $have_glab; then
+        # Prints only the stored token for that host (glab has no 'auth token')
+        GL_TOKEN_VALUE=$(glab config get token --host "$GL_HOST" 2>/dev/null || true)
+        GL_TOKEN_SOURCE="auto-detected"
+    fi
+
+    if [[ -n "$GL_TOKEN_VALUE" ]]; then
+        add_env GITLAB_TOKEN "$GL_TOKEN_VALUE"
+        add_env GITLAB_HOST "$GL_HOST"
+        # git credential helper via env, so a read-only ~/.gitconfig mount is
+        # left untouched. Only user of GIT_CONFIG_*: if another feature needs
+        # it, turn GIT_CONFIG_COUNT into an accumulator.
+        add_env GIT_CONFIG_COUNT 1
+        add_env GIT_CONFIG_KEY_0 "credential.https://${GL_HOST}.helper"
+        add_env GIT_CONFIG_VALUE_0 "!glab auth git-credential"
+    elif $WITH_GITLAB; then
+        log_warn "GitLab token requested but not available for ${GL_HOST}"
+        log_warn "Set GITLAB_TOKEN, pass --gitlab-token, or run 'glab auth login' on host"
+    fi
+}
+
 # --- Main -------------------------------------------------------------------
 
 box_main() {
@@ -850,6 +904,10 @@ box_main() {
     NO_GITHUB=false
     WITH_GITHUB=false
     GITHUB_TOKEN=""
+    NO_GITLAB=false
+    WITH_GITLAB=false
+    GITLAB_TOKEN_ARG=""
+    GITLAB_HOST_ARG=""
     WITH_GCLOUD=false
     WITH_GITCONFIG=false
     EXTRA_MOUNTS=()
@@ -934,6 +992,30 @@ box_main() {
                 ;;
             --github-token=*)
                 GITHUB_TOKEN="${1#*=}"
+                shift
+                ;;
+            --with-gitlab)
+                WITH_GITLAB=true
+                shift
+                ;;
+            --no-gitlab)
+                NO_GITLAB=true
+                shift
+                ;;
+            --gitlab-token)
+                GITLAB_TOKEN_ARG="$2"
+                shift 2
+                ;;
+            --gitlab-token=*)
+                GITLAB_TOKEN_ARG="${1#*=}"
+                shift
+                ;;
+            --gitlab-host)
+                GITLAB_HOST_ARG="$2"
+                shift 2
+                ;;
+            --gitlab-host=*)
+                GITLAB_HOST_ARG="${1#*=}"
                 shift
                 ;;
             --with-gcloud)
@@ -1106,6 +1188,7 @@ box_main() {
         NO_CLIPBOARD=true
     fi
     add_github_token
+    add_gitlab_token
 
     # Firewall is Linux only, and needs a runtime that can grant NET_ADMIN
     if ! $NO_FIREWALL && ! $RT_FIREWALL; then
@@ -1148,6 +1231,13 @@ box_main() {
         log_info "GitHub: enabled ($GH_TOKEN_SOURCE)"
     else
         log_info "GitHub: not available (run 'gh auth login' to enable)"
+    fi
+    if $NO_GITLAB; then
+        log_info "GitLab: disabled"
+    elif [[ -n "$GL_TOKEN_VALUE" ]]; then
+        log_info "GitLab: enabled ($GL_TOKEN_SOURCE, $GL_HOST)"
+    else
+        log_info "GitLab: not available (set GITLAB_TOKEN or run 'glab auth login' to enable)"
     fi
     for status in "${OPTIONAL_MOUNT_STATUS[@]}"; do
         log_info "$status"

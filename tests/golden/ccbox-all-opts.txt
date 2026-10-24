@@ -9,6 +9,11 @@
 -e CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
 -e GH_TOKEN=ghp_stubtoken
 -e GITHUB_TOKEN=ghp_stubtoken
+-e GITLAB_HOST=gitlab.com
+-e GITLAB_TOKEN=glpat-stubtoken
+-e GIT_CONFIG_COUNT=1
+-e GIT_CONFIG_KEY_0=credential.https://gitlab.com.helper
+-e GIT_CONFIG_VALUE_0=!glab auth git-credential
 -e LANG=C.UTF-8
 -e NO_COLOR=1
 -e PROJECT_NAME=demo
