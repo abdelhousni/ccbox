@@ -204,7 +204,7 @@ Oh My Pi keeps three kinds of state, each with a different constraint on how it 
 
 When launched with `--with-firewall` (Linux only), outbound connections are restricted to an allowlist baked into each image at build time from two files:
 
-- `firewall-domains.txt` — common to all harnesses: GitHub (`github.com`, `api.github.com`, `objects.githubusercontent.com`, plus their IP ranges), npm registry, Python packages (`pypi.org`, `files.pythonhosted.org`), Rust packages (`crates.io`, `static.crates.io`)
+- `firewall-domains.txt` — common to all harnesses: GitHub (`github.com`, `api.github.com`, `objects.githubusercontent.com`, plus their IP ranges), GitLab.com (`gitlab.com`, resolved at start; self-hosted GitLab is not included), npm registry, Python packages (`pypi.org`, `files.pythonhosted.org`), Rust packages (`crates.io`, `static.crates.io`)
 - `firewall-domains-{claude,opencode,qwencode,codex,omp}.txt` — harness-specific:
   - **claude**: `api.anthropic.com`, `statsig.anthropic.com`, `claude.ai`, `code.claude.com`, `sentry.io`
   - **opencode**: `opencode.ai`, `api.opencode.ai`, `models.dev`, plus common provider endpoints

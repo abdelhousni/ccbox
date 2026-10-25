@@ -278,7 +278,7 @@ ccbox --with-gitlab                                # Explicitly request token (w
 - The agent can do anything the token allows. Prefer project or group access tokens with the minimum scopes (`read_repository`/`write_repository`, plus `api` only if it should open merge requests) over personal access tokens
 - `--no-gitlab` is the kill switch
 - The image sets `GLAB_CHECK_UPDATE=false` and `GLAB_SEND_TELEMETRY=false`
-- With `--with-firewall`, GitLab hosts are not in the baked allowlist and are blocked
+- With `--with-firewall`, only `gitlab.com` is in the baked allowlist: a self-hosted GitLab is blocked
 - A self-hosted instance behind a private CA needs that CA in the image's trust store (not handled by the launcher yet)
 
 ## Credentials
@@ -310,7 +310,7 @@ ompbox is different: OAuth and `/login`-saved API keys live in the per-project `
 ccbox --with-firewall
 ```
 
-Restricts outbound connections to an allowlist baked into the image (GitHub, package registries, and the harness's own API endpoints). Linux only.
+Restricts outbound connections to an allowlist baked into the image (GitHub, GitLab.com, package registries, and the harness's own API endpoints). Linux only.
 
 **Limitations:** web search, web fetch, and HTTP-based MCP servers do not work behind the firewall; stdio MCP servers do. See [architecture.md](architecture.md#firewall) for the allowlist details and [development.md](development.md) for adding domains.
 
