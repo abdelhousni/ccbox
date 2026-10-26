@@ -41,6 +41,9 @@ By default, the container image is pulled from `quay.io/guimou/ccbox` (or `ocbox
 # Disable clipboard access (for extra security)
 ./ccbox --no-clipboard
 
+# Use ~/.claude/settings-redhat.json as the container's settings.json (or CCBOX_SETTINGS=redhat)
+./ccbox --settings redhat
+
 # Mount ~/.claude/.credentials.json (API key or OAuth, shared across projects)
 ./ccbox --with-credentials
 
@@ -82,7 +85,7 @@ By default, the container image is pulled from `quay.io/guimou/ccbox` (or `ocbox
 ./ompbox --omp-version <version>
 ```
 
-`--with-teams`, `--with-tmux`, and `--safe-mode` are Claude Code specific (ccbox only).
+`--with-teams`, `--with-tmux`, `--safe-mode`, and `--settings` are Claude Code specific (ccbox only).
 
 Multiple sessions can run simultaneously in the same project. Each session gets a unique container name with a session ID suffix, while sharing project data (history, todos, plans, tasks).
 
@@ -257,7 +260,7 @@ The launchers also run inside a long-lived pod (`docs/kubernetes.md`): the pod i
 - **User**: `coder` (UID 1000) for `--userns=keep-id` compatibility
 - **Mounts**:
   - Current directory → `/workspace`
-  - Global settings (shared): `~/.claude/{settings.json,settings.local.json,keybindings.json,CLAUDE.md,statsig,hooks,commands,skills,agents,rules}`
+  - Global settings (shared; `--settings <name>` swaps in `~/.claude/settings-<name>.json` as `settings.json`): `~/.claude/{settings.json,settings.local.json,keybindings.json,CLAUDE.md,statsig,hooks,commands,skills,agents,rules}`
   - Project data (isolated): `~/.claude/ccbox-projects/{project}_{hash}/` → session data, history, todos, plugins
   - `~/.claude.json` → `/home/coder/.claude.json`
   - `~/.claude/.credentials.json` → `/home/coder/.claude/.credentials.json` (read-write, only with `--with-credentials`)
