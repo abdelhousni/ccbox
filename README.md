@@ -93,6 +93,7 @@ ccbox --build             # Build the image locally (development, Apple Silicon)
 ccbox --build-base        # Also rebuild the shared base image locally
 ccbox --local             # Use the locally-built image
 ccbox -- --version        # Pass arguments to the harness CLI
+ccbox --settings redhat   # Use ~/.claude/settings-redhat.json as settings.json
 ccbox --help              # All options
 ```
 

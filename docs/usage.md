@@ -49,7 +49,7 @@ The container image is automatically pulled from `quay.io/guimou/{ccbox,ocbox,qc
 | `--install` | Show OS/shell-specific installation instructions |
 | `--` | Everything after is passed to the harness CLI |
 
-ccbox-only flags: `--with-teams`, `--with-tmux`, `--safe-mode`. `--with-credentials` is available on all five launchers (see below).
+ccbox-only flags: `--with-teams`, `--with-tmux`, `--safe-mode`, `--settings <name>` (see [Settings Variants](#settings-variants-ccbox)). `--with-credentials` is available on all five launchers (see below).
 
 ## Runtimes
 
@@ -300,6 +300,21 @@ ccbox --with-teams --with-tmux
 - `--with-tmux` starts claude inside a tmux session (pre-installed in the image). This is required for split panes because some terminals (e.g. Ghostty) don't support tmux auto-detection.
 - Teammates can use git worktrees under `/workspace/.claude/worktrees/`, fully contained within the mounted workspace.
 - Agent teams use significantly more tokens than a single session. Start with 3-5 teammates. See the [Claude Code docs](https://code.claude.com/docs/en/agent-teams).
+
+## Settings Variants (ccbox)
+
+Keep alternative Claude Code user settings next to the default one and pick one at launch. `--settings <name>` mounts `~/.claude/settings-<name>.json` *as* `/home/coder/.claude/settings.json`, so Claude Code reads it as its normal user settings:
+
+```bash
+ccbox                      # ~/.claude/settings.json (default)
+ccbox --settings redhat    # ~/.claude/settings-redhat.json, seen as settings.json
+CCBOX_SETTINGS=redhat ccbox   # same, from the environment (the flag wins)
+```
+
+- The variant is per session: the same project can be open in two sessions with different settings at the same time. History, sessions, and credentials are still shared per project as usual.
+- The file must already exist (create it by copying `settings.json`); a missing file or an invalid name stops the launch.
+- It is mounted read-write, so settings Claude Code saves (e.g. enabled plugins, `/config`) go to the selected variant.
+- Only `settings.json` is swapped. `settings.local.json`, project `.claude/settings*.json`, and managed settings apply as usual on top of it.
 
 ## Troubleshooting
 
