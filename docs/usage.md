@@ -263,6 +263,16 @@ For a self-hosted instance, set the host once in your shell profile so you don't
 export GITLAB_HOST=gitlab.example.com   # e.g. in ~/.zshrc
 ```
 
+**Recommended self-hosted setup (no token in your shell):** log glab in on the host once, and let the launcher ask glab for that host's token. This works like GitHub's `gh auth login`: the launcher never reads glab's files itself, it asks the host `glab`, which finds the token in `~/.config/glab-cli/config.yml` (or the system keyring).
+
+```bash
+glab auth login --hostname gitlab.example.com   # once, on the host
+export GITLAB_HOST=gitlab.example.com           # in ~/.zshrc
+ccbox                                           # GitLab: enabled (auto-detected, gitlab.example.com)
+```
+
+Without `GITLAB_HOST`, only glab's default host is checked (`gitlab.com` unless changed with `glab config set host gitlab.example.com --global`), so a self-hosted login is not found. Without `glab` installed on the host, use `GITLAB_TOKEN` instead. A token from a browser (OAuth) login expires after a while and is only refreshed by glab itself on the host: if the container reports an expired token, run any `glab` command on the host and relaunch, or use a personal or project access token.
+
 When a token is found, the container gets `GITLAB_TOKEN` and `GITLAB_HOST`, which `glab` reads directly. Git HTTPS is wired to `glab auth git-credential` for that host only, through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0` env vars, so a read-only `--with-gitconfig` mount is not touched. The host's glab config is not mounted. Instead the launcher seeds a token-less glab config for that host (`~/.codebox/glab/<host>/config.yml`, mode 600, created only if missing) and mounts that directory read-write as `~/.config/glab-cli`. glab needs the host listed there to report `GITLAB_TOKEN` as valid in `glab auth status` and to clone over HTTPS. glab's own state (such as `last_seen_version`) and any `glab config set` made in a session persist there, per host and shared across projects. If you run `glab auth login` inside the container, that token is saved there on the host too; use `GITLAB_TOKEN` instead to keep tokens out of it. Delete the directory to reset it. One GitLab host per launch.
 
 ```bash
