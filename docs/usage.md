@@ -50,7 +50,7 @@ The container image is automatically pulled from `quay.io/guimou/{ccbox,ocbox,qc
 | `--install` | Show OS/shell-specific installation instructions |
 | `--` | Everything after is passed to the harness CLI |
 
-ccbox-only flags: `--with-teams`, `--with-tmux`, `--safe-mode`. `--with-credentials` is available on all five launchers (see below).
+ccbox-only flags: `--with-teams`, `--with-tmux`, `--safe-mode`, `--settings <name>` (see [Settings Variants](#settings-variants-ccbox)). `--with-credentials` is available on all five launchers (see below).
 
 ## Runtimes
 
@@ -107,7 +107,7 @@ Every launcher always forwards the host environment variables matching its harne
 | `ocbox` | `OPENCODE_*`, `ANTHROPIC_*`, `OPENAI_*`, `OPENROUTER_*`, `GEMINI_*`, `GOOGLE_*`, `AZURE_*`, `DEEPSEEK_*`, `MISTRAL_*`, `XAI_*`, `GROQ_*` | `AWS_REGION`, `AWS_PROFILE`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`, `AWS_BEARER_TOKEN_BEDROCK`, plus `NODE_OPTIONS`, `NO_COLOR`, `FORCE_COLOR` | the whole `~/.config/opencode/` directory (incl. `opencode.json`) |
 | `qcbox` | `QWEN_*`, `OPENAI_*`, `DASHSCOPE_*`, `BAILIAN_*`, `MODELSCOPE_*`, `OPENROUTER_*`, `ANTHROPIC_*`, `GEMINI_*`, `GOOGLE_*` | `NODE_OPTIONS`, `NO_COLOR`, `FORCE_COLOR`, `NODE_EXTRA_CA_CERTS` (non-credential) | `~/.qwen/settings.json` (a home-level `~/.qwen/.env` is also mounted read-only if present) |
 | `cxbox` | `CODEX_*`, `OPENAI_*`, `OPENROUTER_*`, `ANTHROPIC_*`, `GEMINI_*`, `GOOGLE_*`, `AZURE_*`, `DEEPSEEK_*`, `MISTRAL_*`, `XAI_*`, `GROQ_*` | `AWS_REGION`, `AWS_PROFILE`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`, `AWS_BEARER_TOKEN_BEDROCK`, plus `NODE_OPTIONS`, `NO_COLOR`, `FORCE_COLOR` | `~/.codex/config.toml` (copied into the per-project dir at launch; refreshed whenever the host file changed) |
-| `ompbox` | `OMP_*`, `PI_*` (except `PI_CODING_AGENT_DIR`, `PI_CONFIG_DIR`, `PI_CONFIG_FILES`, `PI_PROFILE`, `OMP_PROFILE`, `PI_INSTALL_DIR` — these would relocate omp's state or override the baked config overlay), `ANTHROPIC_*`, `OPENAI_*`, `OPENROUTER_*`, `GEMINI_*`, `GOOGLE_*`, `AZURE_*`, `DEEPSEEK_*`, `MISTRAL_*`, `XAI_*`, `GROQ_*`, `QWEN_*`, `DASHSCOPE_*`, `COPILOT_*` | `AWS_REGION`, `AWS_PROFILE`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`, `AWS_BEARER_TOKEN_BEDROCK`, plus `NODE_OPTIONS`, `NO_COLOR`, `FORCE_COLOR` | `~/.omp/agent/config.yml` (copied into the per-project dir at launch; refreshed whenever the host file changed) |
+| `ompbox` | `OMP_*`, `PI_*` (except `PI_CODING_AGENT_DIR`, `PI_CONFIG_DIR`, `PI_CONFIG_FILES`, `PI_PROFILE`, `OMP_PROFILE`, `PI_INSTALL_DIR` — these would relocate omp's state or override the baked config overlay), `ANTHROPIC_*`, `OPENAI_*`, `OPENROUTER_*`, `GEMINI_*`, `GOOGLE_*`, `AZURE_*`, `DEEPSEEK_*`, `MISTRAL_*`, `XAI_*`, `GROQ_*`, `QWEN_*`, `DASHSCOPE_*`, `COPILOT_*` | `AWS_REGION`, `AWS_PROFILE`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`, `AWS_BEARER_TOKEN_BEDROCK`, plus `NODE_OPTIONS`, `NO_COLOR`, `FORCE_COLOR`, `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS` | `~/.omp/agent/config.yml` (copied into the per-project dir at launch; refreshed whenever the host file changed) |
 
 GitHub token injection (`GH_TOKEN`) and GitLab token injection (`GITLAB_TOKEN`) are separate and work the same for all five (see [GitHub Authentication](#github-authentication) and [GitLab Authentication](#gitlab-authentication)).
 
@@ -352,6 +352,21 @@ ccbox --with-teams --with-tmux
 - `--with-tmux` starts claude inside a tmux session (pre-installed in the image). This is required for split panes because some terminals (e.g. Ghostty) don't support tmux auto-detection.
 - Teammates can use git worktrees under `/workspace/.claude/worktrees/`, fully contained within the mounted workspace.
 - Agent teams use significantly more tokens than a single session. Start with 3-5 teammates. See the [Claude Code docs](https://code.claude.com/docs/en/agent-teams).
+
+## Settings Variants (ccbox)
+
+Keep alternative Claude Code user settings next to the default one and pick one at launch. `--settings <name>` mounts `~/.claude/settings-<name>.json` *as* `/home/coder/.claude/settings.json`, so Claude Code reads it as its normal user settings:
+
+```bash
+ccbox                      # ~/.claude/settings.json (default)
+ccbox --settings redhat    # ~/.claude/settings-redhat.json, seen as settings.json
+CCBOX_SETTINGS=redhat ccbox   # same, from the environment (the flag wins)
+```
+
+- The variant is per session: the same project can be open in two sessions with different settings at the same time. History, sessions, and credentials are still shared per project as usual.
+- The file must already exist (create it by copying `settings.json`); a missing file or an invalid name stops the launch.
+- It is mounted read-write, so settings Claude Code saves (e.g. enabled plugins, `/config`) go to the selected variant.
+- Only `settings.json` is swapped. `settings.local.json`, project `.claude/settings*.json`, and managed settings apply as usual on top of it.
 
 ## Troubleshooting
 

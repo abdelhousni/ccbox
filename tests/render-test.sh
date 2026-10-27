@@ -42,6 +42,7 @@ mkdir -p "$FAKE_HOME" "$WORKSPACE" "$NPM_PREFIX" "$STUBS" "$OUT" "${ROOT}/repos/
 touch "${FAKE_HOME}/.gitconfig" "${FAKE_HOME}/.claude.json"
 mkdir -p "${FAKE_HOME}/.config/gcloud" "${FAKE_HOME}/.claude" "${FAKE_HOME}/.qwen"
 touch "${FAKE_HOME}/.claude/status-line.sh" "${FAKE_HOME}/.claude/RULES.md" "${FAKE_HOME}/.qwen/.env"
+echo '{}' > "${FAKE_HOME}/.claude/settings-redhat.json"
 mkdir -p "${FAKE_HOME}/.omp/agent" && touch "${FAKE_HOME}/.omp/agent/AGENTS.md"
 
 # --- stubs ---------------------------------------------------------------
@@ -122,6 +123,11 @@ SCENARIOS=(
     "ccbox-mount|ccbox|--mount ROOT/repos/demo-worktrees:/worktrees --mount=ROOT/npm-global:/extra:ro"
     "!ccbox-mount-missing|ccbox|--mount ROOT/repos/nope:/worktrees"
     "!ccbox-mount-relative|ccbox|--mount ROOT/repos/demo-worktrees:worktrees"
+    # settings variant: ~/.claude/settings-redhat.json mounted as settings.json
+    "ccbox-settings|ccbox|--settings redhat"
+    "ccbox-settings-env|ccbox|"
+    "!ccbox-settings-missing|ccbox|--settings nope"
+    "!ccbox-settings-invalid|ccbox|--settings=../x"
     "ocbox-default|ocbox|"
     "ocbox-all-opts|ocbox|--with-firewall --with-credentials --with-gcloud --with-gitconfig"
     "ocbox-args|ocbox|-- --version"
@@ -211,14 +217,11 @@ for entry in "${SCENARIOS[@]}"; do
     IFS='|' read -r name box args <<< "$entry"
     args="${args//ROOT/$ROOT}"
     EXTRA_ENV=(NOOP=1)
-    case "$name" in
-        apptainer-env-var)
-            EXTRA_ENV=(CODEBOX_RUNTIME=apptainer "CODEBOX_SCRATCH_DIR=${ROOT}/scratch") ;;
-        ccbox-gitlab-env)
-            EXTRA_ENV=(GITLAB_TOKEN=glpat-env GITLAB_HOST=https://gitlab.env.test) ;;  # notsecret
-        ccbox-gitlab-env-nohost)
-            EXTRA_ENV=(GITLAB_TOKEN=glpat-env) ;;  # notsecret
-    esac
+    if [[ "$name" == apptainer-env-var ]]; then
+        EXTRA_ENV=(CODEBOX_RUNTIME=apptainer "CODEBOX_SCRATCH_DIR=${ROOT}/scratch")
+    elif [[ "$name" == ccbox-settings-env ]]; then
+        EXTRA_ENV=(CCBOX_SETTINGS=redhat)
+    fi
     if [[ "$name" == !* ]]; then
         # Expected to be refused before anything is launched
         name="${name#!}"

@@ -48,6 +48,8 @@ WITH_TEAMS=false
 WITH_TMUX=false
 SAFE_MODE=false
 WITH_CREDENTIALS=false
+# Settings variant: ~/.claude/settings-<name>.json mounted as settings.json
+SETTINGS_VARIANT="${CCBOX_SETTINGS:-}"
 
 harness_parse_arg() {
     case $1 in
@@ -67,6 +69,18 @@ harness_parse_arg() {
             WITH_CREDENTIALS=true
             ARG_SHIFT=1
             ;;
+        --settings)
+            if [[ -z "${2:-}" || "$2" == -* ]]; then
+                log_error "--settings requires a name (uses ~/.claude/settings-<name>.json)"
+                exit 1
+            fi
+            SETTINGS_VARIANT="$2"
+            ARG_SHIFT=2
+            ;;
+        --settings=*)
+            SETTINGS_VARIANT="${1#*=}"
+            ARG_SHIFT=1
+            ;;
         *)
             return 1
             ;;
@@ -78,6 +92,8 @@ harness_extra_help() {
     echo "  --with-tmux              Run claude inside tmux (for split-pane agent teams)"
     echo "  --safe-mode              Start with all customizations disabled"
     echo "  --with-credentials       Mount ~/.claude/.credentials.json read-write (API key or OAuth)"
+    echo "  --settings NAME          Mount ~/.claude/settings-NAME.json as settings.json"
+    echo "                           (default: \$CCBOX_SETTINGS, else ~/.claude/settings.json)"
 }
 
 # Ensure global config files and directories exist
@@ -93,6 +109,20 @@ harness_ensure_config() {
     # Settings (credentials are opt-in via --with-credentials and not created here)
     [[ -f "${config_dir}/settings.json" ]] || echo '{}' > "${config_dir}/settings.json"
     [[ -f "${config_dir}/settings.local.json" ]] || echo '{}' > "${config_dir}/settings.local.json"
+    # Settings variant (--settings / CCBOX_SETTINGS): must already exist, so a
+    # typo fails loudly instead of starting a session with empty settings
+    SETTINGS_FILE="${config_dir}/settings.json"
+    if [[ -n "$SETTINGS_VARIANT" ]]; then
+        if [[ ! "$SETTINGS_VARIANT" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]]; then
+            log_error "Invalid settings name: '$SETTINGS_VARIANT' (letters, digits, '.', '_', '-')"
+            exit 1
+        fi
+        SETTINGS_FILE="${config_dir}/settings-${SETTINGS_VARIANT}.json"
+        if [[ ! -f "$SETTINGS_FILE" ]]; then
+            log_error "Settings file not found: $SETTINGS_FILE"
+            exit 1
+        fi
+    fi
     if $WITH_CREDENTIALS; then
         if [[ ! -f "${config_dir}/.credentials.json" ]]; then
             log_info "No existing credentials found, starting fresh: ${config_dir}/.credentials.json"
@@ -143,7 +173,7 @@ harness_setup_project() {
 
 harness_mounts() {
     # Global settings (shared across all projects)
-    add_mount "${CLAUDE_CONFIG_DIR}/settings.json"       /home/coder/.claude/settings.json
+    add_mount "$SETTINGS_FILE"                           /home/coder/.claude/settings.json
     add_mount "${CLAUDE_CONFIG_DIR}/settings.local.json" /home/coder/.claude/settings.local.json
     add_mount "${CLAUDE_CONFIG_DIR}/keybindings.json"    /home/coder/.claude/keybindings.json
     add_mount "${CLAUDE_CONFIG_DIR}/CLAUDE.md"           /home/coder/.claude/CLAUDE.md
@@ -233,6 +263,7 @@ harness_log_status() {
     log_info "Agent teams: $(if $WITH_TEAMS; then echo 'enabled'; else echo 'disabled'; fi)"
     log_info "Tmux: $(if $WITH_TMUX; then echo 'enabled'; else echo 'disabled'; fi)"
     log_info "Safe mode: $(if $SAFE_MODE; then echo 'enabled'; else echo 'disabled'; fi)"
+    log_info "Settings: ${SETTINGS_FILE/#"$HOME"/\~}"
     log_info "Credentials: $(if $WITH_CREDENTIALS; then echo 'mounted (shared across projects)'; else echo 'not mounted (use --with-credentials)'; fi)"
 }
 

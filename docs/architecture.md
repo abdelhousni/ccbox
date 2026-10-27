@@ -127,7 +127,7 @@ flowchart TB
 | Location | Purpose | Scope |
 |----------|---------|-------|
 | **Settings** | | |
-| `~/.claude/settings.json` | Global settings | Shared |
+| `~/.claude/settings.json` | Global settings (or `settings-<name>.json` with `--settings <name>`) | Shared |
 | `~/.claude/settings.local.json` | Local settings (not synced) | Shared |
 | `~/.claude/keybindings.json` | Keyboard shortcuts | Shared |
 | **Authentication** | | |
