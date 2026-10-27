@@ -4,6 +4,11 @@
 --userns=keep-id:uid=1000,gid=1000
 -e ANTHROPIC_API_KEY=anthropic-stub
 -e AWS_REGION=eu-west-1
+-e GITLAB_HOST=gitlab.com
+-e GITLAB_TOKEN=glpat-stubtoken
+-e GIT_CONFIG_COUNT=1
+-e GIT_CONFIG_KEY_0=credential.https://gitlab.com.helper
+-e GIT_CONFIG_VALUE_0=!glab auth git-credential
 -e LANG=C.UTF-8
 -e NO_COLOR=1
 -e PROJECT_NAME=demo
@@ -42,6 +47,7 @@
 -v ROOT/home/.claude/status-line.sh:/home/coder/.claude/status-line.sh:ro,z
 -v ROOT/home/.claude/themes:/home/coder/.claude/themes:z
 -v ROOT/home/.claude/workflows:/home/coder/.claude/workflows:z
+-v ROOT/home/.codebox/glab/gitlab.com:/home/coder/.config/glab-cli:z
 -v ROOT/npm-global:/home/coder/.npm-global:ro,z
 -v ROOT/repos/demo:/workspace:z
 -w /workspace

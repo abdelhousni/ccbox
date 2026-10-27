@@ -7,6 +7,9 @@ github.com
 api.github.com
 objects.githubusercontent.com
 
+# GitLab.com (glab API and git over HTTPS; self-hosted instances are not covered)
+gitlab.com
+
 # npm registry (for potential package installations)
 registry.npmjs.org
 

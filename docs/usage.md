@@ -38,6 +38,7 @@ The container image is automatically pulled from `quay.io/guimou/{ccbox,ocbox,qc
 | `--with-firewall` | Restrict outbound network to an allowlist (Linux only) |
 | `--no-clipboard` | Disable host clipboard/display access |
 | `--no-github` / `--with-github` / `--github-token <t>` | Control GitHub token injection |
+| `--no-gitlab` / `--with-gitlab` / `--gitlab-token <t>` / `--gitlab-host <h>` | Control GitLab token injection (see [GitLab Authentication](#gitlab-authentication)) |
 | `--npm-global <dir>` | Explicit npm global prefix to mount (auto-detected otherwise) |
 | `--with-gcloud` | Mount `~/.config/gcloud` read-only (Vertex AI, opt-in) |
 | `--with-gitconfig` | Mount `~/.gitconfig` read-only (git identity, opt-in) |
@@ -63,7 +64,7 @@ The launchers can drive two container runtimes. The mounts, environment and isol
 | `--build` / `--build-base` | Supported | Not available (build with Podman or CI, then let the launcher convert) |
 | `--with-firewall` | Supported (Linux) | Refused: restrict egress at the pod or namespace level instead |
 | Clipboard, audio, npm-global mount | Wired when the desktop has them | Not applicable (no desktop) |
-| GitHub token, provider env vars, credential files, `--with-gcloud`, `--with-gitconfig`, `--mount` | Same on both | Same on both (env vars come from the pod environment, files from the pod's home directory) |
+| GitHub/GitLab tokens, provider env vars, credential files, `--with-gcloud`, `--with-gitconfig`, `--mount` | Same on both | Same on both (env vars come from the pod environment, files from the pod's home directory) |
 | `--list-sessions` | `podman ps` | Marker files under `~/.codebox/sessions` (stale ones are pruned when listing) |
 
 Apptainer environment variables:
@@ -108,7 +109,7 @@ Every launcher always forwards the host environment variables matching its harne
 | `cxbox` | `CODEX_*`, `OPENAI_*`, `OPENROUTER_*`, `ANTHROPIC_*`, `GEMINI_*`, `GOOGLE_*`, `AZURE_*`, `DEEPSEEK_*`, `MISTRAL_*`, `XAI_*`, `GROQ_*` | `AWS_REGION`, `AWS_PROFILE`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`, `AWS_BEARER_TOKEN_BEDROCK`, plus `NODE_OPTIONS`, `NO_COLOR`, `FORCE_COLOR` | `~/.codex/config.toml` (copied into the per-project dir at launch; refreshed whenever the host file changed) |
 | `ompbox` | `OMP_*`, `PI_*` (except `PI_CODING_AGENT_DIR`, `PI_CONFIG_DIR`, `PI_CONFIG_FILES`, `PI_PROFILE`, `OMP_PROFILE`, `PI_INSTALL_DIR` — these would relocate omp's state or override the baked config overlay), `ANTHROPIC_*`, `OPENAI_*`, `OPENROUTER_*`, `GEMINI_*`, `GOOGLE_*`, `AZURE_*`, `DEEPSEEK_*`, `MISTRAL_*`, `XAI_*`, `GROQ_*`, `QWEN_*`, `DASHSCOPE_*`, `COPILOT_*` | `AWS_REGION`, `AWS_PROFILE`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`, `AWS_BEARER_TOKEN_BEDROCK`, plus `NODE_OPTIONS`, `NO_COLOR`, `FORCE_COLOR`, `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS` | `~/.omp/agent/config.yml` (copied into the per-project dir at launch; refreshed whenever the host file changed) |
 
-GitHub token injection (`GH_TOKEN`) is separate and works the same for all five (see [GitHub Authentication](#github-authentication)).
+GitHub token injection (`GH_TOKEN`) and GitLab token injection (`GITLAB_TOKEN`) are separate and work the same for all five (see [GitHub Authentication](#github-authentication) and [GitLab Authentication](#gitlab-authentication)).
 
 > **Consequence:** if your harness's main config file contains API keys (a `"env"` block or a provider definition with an `apiKey`/`envKey`), those files are mounted into the container **regardless of `--with-credentials`** — that flag only controls the separate OAuth/credential store file (see [Credentials](#credentials)). If that is not what you want, don't keep keys in the shared config: use a shell export (or per-project override below), or a file that is *not* mounted.
 
@@ -239,6 +240,57 @@ ccbox --github-token "ghp_xxx"     # Use specific token instead of auto-detectin
 - Use fine-grained PATs for minimal scope
 - For extra security, combine with `--with-firewall`
 
+## GitLab Authentication
+
+`glab` (GitLab CLI) is in the image, and a GitLab token is injected the same way as the GitHub one. This works for gitlab.com and for self-hosted GitLab (CE/EE).
+
+**Token** (first match wins):
+
+1. `--gitlab-token <t>` (`provided`)
+2. `GITLAB_TOKEN` in the host environment (`env`)
+3. the host's `glab`, from `glab config get token --host <host>` after `glab auth login` (`auto-detected`)
+
+**Host**: `--gitlab-host`, then `GITLAB_HOST`. With neither:
+
+- a token from the host `glab` uses glab's default host (`glab config get host`, `gitlab.com` unless configured), since glab stores each token with its host
+- a token from `--gitlab-token` or `GITLAB_TOKEN` is **not injected** and the launcher warns: nothing says which instance it belongs to, and guessing `gitlab.com` would send a self-hosted token to a third party
+
+A URL such as `https://gitlab.example.com/` is reduced to the bare host.
+
+For a self-hosted instance, set the host once in your shell profile so you don't have to pass `--gitlab-host` each time:
+
+```bash
+export GITLAB_HOST=gitlab.example.com   # e.g. in ~/.zshrc
+```
+
+**Recommended self-hosted setup (no token in your shell):** log glab in on the host once, and let the launcher ask glab for that host's token. This works like GitHub's `gh auth login`: the launcher never reads glab's files itself, it asks the host `glab`, which finds the token in `~/.config/glab-cli/config.yml` (or the system keyring).
+
+```bash
+glab auth login --hostname gitlab.example.com   # once, on the host
+export GITLAB_HOST=gitlab.example.com           # in ~/.zshrc
+ccbox                                           # GitLab: enabled (auto-detected, gitlab.example.com)
+```
+
+Without `GITLAB_HOST`, only glab's default host is checked (`gitlab.com` unless changed with `glab config set host gitlab.example.com --global`), so a self-hosted login is not found. Without `glab` installed on the host, use `GITLAB_TOKEN` instead. A token from a browser (OAuth) login expires after a while and is only refreshed by glab itself on the host: if the container reports an expired token, run any `glab` command on the host and relaunch, or use a personal or project access token.
+
+When a token is found, the container gets `GITLAB_TOKEN` and `GITLAB_HOST`, which `glab` reads directly. Git HTTPS is wired to `glab auth git-credential` for that host only, through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0` env vars, so a read-only `--with-gitconfig` mount is not touched. The host's glab config is not mounted. Instead the launcher seeds a token-less glab config for that host (`~/.codebox/glab/<host>/config.yml`, mode 600, created only if missing) and mounts that directory read-write as `~/.config/glab-cli`. glab needs the host listed there to report `GITLAB_TOKEN` as valid in `glab auth status` and to clone over HTTPS. glab's own state (such as `last_seen_version`) and any `glab config set` made in a session persist there, per host and shared across projects. If you run `glab auth login` inside the container, that token is saved there on the host too; use `GITLAB_TOKEN` instead to keep tokens out of it. Delete the directory to reset it. One GitLab host per launch.
+
+```bash
+ccbox                                              # Auto-detect (default; nothing happens without a token)
+ccbox --gitlab-host gitlab.example.com             # Self-hosted, token from GITLAB_TOKEN or host glab
+ccbox --gitlab-token "glpat-xxx" --gitlab-host gitlab.example.com
+ccbox --no-gitlab                                  # Launch without GitLab token
+ccbox --with-gitlab                                # Explicitly request token (warn if unavailable)
+```
+
+**Security notes:**
+
+- The agent can do anything the token allows. Prefer project or group access tokens with the minimum scopes (`read_repository`/`write_repository`, plus `api` only if it should open merge requests) over personal access tokens
+- `--no-gitlab` is the kill switch
+- The image sets `GLAB_CHECK_UPDATE=false` and `GLAB_SEND_TELEMETRY=false`
+- With `--with-firewall`, only `gitlab.com` is in the baked allowlist: a self-hosted GitLab is blocked
+- A self-hosted instance behind a private CA needs that CA in the image's trust store (not handled by the launcher yet)
+
 ## Credentials
 
 There are **two different things** that can hold credentials, and only one of them is gated by a flag:
@@ -268,7 +320,7 @@ ompbox is different: OAuth and `/login`-saved API keys live in the per-project `
 ccbox --with-firewall
 ```
 
-Restricts outbound connections to an allowlist baked into the image (GitHub, package registries, and the harness's own API endpoints). Linux only.
+Restricts outbound connections to an allowlist baked into the image (GitHub, GitLab.com, package registries, and the harness's own API endpoints). Linux only.
 
 **Limitations:** web search, web fetch, and HTTP-based MCP servers do not work behind the firewall; stdio MCP servers do. See [architecture.md](architecture.md#firewall) for the allowlist details and [development.md](development.md) for adding domains.
 
@@ -383,7 +435,7 @@ Common development tools the harness can use directly or through skills and hook
 | **TS/JS Tools** | prettier, tsx |
 | **Python Tools** | pytest (asyncio, cov), mypy, ruff, httpx |
 | **Build** | make, cmake, gcc, g++, pkg-config |
-| **Version Control** | git, gh (GitHub CLI) |
+| **Version Control** | git, gh (GitHub CLI), glab (GitLab CLI) |
 | **Code Quality** | ruff, ShellCheck, prettier |
 | **Database Clients** | sqlite, psql, mysql, redis-cli |
 | **DevOps** | helm, kubectl, ansible |

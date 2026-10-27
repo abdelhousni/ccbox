@@ -1,5 +1,6 @@
 --bind /etc/localtime:/etc/localtime:ro
 --bind ROOT/home/.cache/opencode:/home/coder/.cache/opencode
+--bind ROOT/home/.codebox/glab/gitlab.com:/home/coder/.config/glab-cli
 --bind ROOT/home/.config/opencode:/home/coder/.config/opencode
 --bind ROOT/home/.local/share/ocbox-projects/demo_HASH/data:/home/coder/.local/share/opencode
 --bind ROOT/home/.local/share/opencode/auth.json:/home/coder/.local/share/opencode/auth.json
@@ -10,6 +11,11 @@
 --env CODEBOX_SESSION=ocbox-demo-HASH-SESSION
 --env GH_TOKEN=ghp_stubtoken
 --env GITHUB_TOKEN=ghp_stubtoken
+--env GITLAB_HOST=gitlab.com
+--env GITLAB_TOKEN=glpat-stubtoken
+--env GIT_CONFIG_COUNT=1
+--env GIT_CONFIG_KEY_0=credential.https://gitlab.com.helper
+--env GIT_CONFIG_VALUE_0=!glab auth git-credential
 --env LANG=C.UTF-8
 --env NO_COLOR=1
 --env OPENAI_API_KEY=openai-stub

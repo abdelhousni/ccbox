@@ -80,6 +80,15 @@ case "$1 $2" in
 esac
 EOF
 
+cat > "${STUBS}/glab" <<'EOF'
+#!/bin/bash
+case "$*" in
+    "config get host")      echo gitlab.com ;;
+    "config get token --host "*) echo glpat-stubtoken ;;
+    *) exit 1 ;;
+esac
+EOF
+
 cat > "${STUBS}/npm" <<'EOF'
 #!/bin/bash
 [[ "$*" == "config get prefix" ]] && echo "${NPM_PREFIX}"
@@ -105,6 +114,12 @@ SCENARIOS=(
     "ccbox-safe-mode-args|ccbox|--safe-mode -- --version"
     "ccbox-no-github|ccbox|--no-github --claude-version 1.2.3"
     "ccbox-explicit|ccbox|--github-token ghp_explicit --npm-global ROOT/npm-global --local"
+    "ccbox-gitlab-explicit|ccbox|--gitlab-token glpat-explicit --gitlab-host gitlab.example.test"
+    "ccbox-no-gitlab|ccbox|--no-gitlab"
+    # GITLAB_TOKEN from env: injected with GITLAB_HOST; without a host it is
+    # not (never guess gitlab.com for a token of unknown origin)
+    "ccbox-gitlab-env|ccbox|"
+    "ccbox-gitlab-env-nohost|ccbox|"
     "ccbox-mount|ccbox|--mount ROOT/repos/demo-worktrees:/worktrees --mount=ROOT/npm-global:/extra:ro"
     "!ccbox-mount-missing|ccbox|--mount ROOT/repos/nope:/worktrees"
     "!ccbox-mount-relative|ccbox|--mount ROOT/repos/demo-worktrees:worktrees"
@@ -127,6 +142,7 @@ SCENARIOS=(
     # apptainer runtime (the pod-as-host case): no clipboard/npm-global, SIF image
     "apptainer-ccbox-default|ccbox|--runtime apptainer"
     "apptainer-ccbox-all-opts|ccbox|--runtime apptainer --with-credentials --with-gcloud --with-gitconfig --with-teams --with-tmux"
+    "apptainer-ccbox-gitlab|ccbox|--runtime apptainer --gitlab-host=https://gitlab.example.test/"
     "apptainer-ccbox-shell|ccbox|--runtime=apptainer --shell"
     "apptainer-ocbox-default|ocbox|--runtime apptainer --with-credentials"
     "apptainer-qcbox-default|qcbox|--runtime apptainer"
